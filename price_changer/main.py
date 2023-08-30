@@ -6,39 +6,39 @@ def main(page: ft.Page):
     # Метод для замены прайса
     def change_price(e):
         pass
-        # # Создание списка с артикулами
-        # articles = [item.strip() for item in art.value.split(',')]
-        # print(articles)
+        # Создание списка с артикулами
+        articles = [item.strip() for item in art.value.split(',')]
+        print(articles)
         
-        # # Создание списка с основной ценой
-        # price_retail = [float(item.strip()) for item in price.value.split(',')]
-        # print(price_retail)
+        # Создание списка с основной ценой
+        price_retail = [float(item.strip()) for item in price.value.split(',')]
+        print(price_retail)
         
-        # # Создание списка с основной ценой
-        # price_wholesale = [float(item.strip()) for item in altprice.value.split(',')]
-        # print(price_wholesale)
+        # Создание списка с основной ценой
+        price_wholesale = [float(item.strip()) for item in altprice.value.split(',')]
+        print(price_wholesale)
         
-        # # Открытие таблицы Excel
-        # wb = openpyxl.load_workbook('C:\\Users\\Admin\\VSCProjects\\FLET\\price_changer\\TableTest.xlsx')
-        # sheet = wb.active
+        # Открытие таблицы Excel
+        wb = openpyxl.load_workbook('C:\\Users\\Admin\\VSCProjects\\FLET\\price_changer\\TableTest.xlsx')
+        sheet = wb.active
 
-        # # Сравнение значений столбца "Артикул" и присваивание цен
-        # start_row = 7
-        # row = start_row
-        # col_article = 'J'
-        # col_retail = 'H'
-        # col_wholesale = 'I'
+        # Сравнение значений столбца "Артикул" и присваивание цен
+        start_row = 7
+        row = start_row
+        col_article = 'J'
+        col_retail = 'H'
+        col_wholesale = 'I'
 
-        # while sheet[col_article + str(row)].value:
-        #     article = sheet[col_article + str(row)].value
-        #     if article in articles:
-        #         index = articles.index(article)
-        #         sheet[col_retail + str(row)].value = price_retail[index]
-        #         sheet[col_wholesale + str(row)].value = price_wholesale[index]
-        #     row += 1
+        while sheet[col_article + str(row)].value:
+            article = sheet[col_article + str(row)].value
+            if article in articles:
+                index = articles.index(article)
+                sheet[col_retail + str(row)].value = price_retail[index]
+                sheet[col_wholesale + str(row)].value = price_wholesale[index]
+            row += 1
 
-        # # Сохранение обновленной таблицы
-        # wb.save('Прайс_Uastal_Конфеденц_сегодня.xlsx')
+        # Сохранение обновленной таблицы
+        wb.save('Прайс_Uastal_Конфеденц_сегодня.xlsx')
         
     # Метод форматирования значений    
     def format_values(e):
