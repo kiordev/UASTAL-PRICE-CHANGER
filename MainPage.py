@@ -3,6 +3,7 @@ import openpyxl
 import os
 from design import *
 from flet import FilePicker, FilePickerResultEvent
+from datetime import datetime
 
 uastal_orange = "#E67E22"  # Цвет из design.py (можешь подставить свой)
 
@@ -30,7 +31,8 @@ def update_prices(import_path, target_path):
                 target_ws[f'I{cell.row}'] = special_price
 
     # Сохраняем новый файл
-    new_path = target_path.replace(".xlsx", "_UPDATED.xlsx")
+    today = datetime.today().strftime("%d.%m.%Y")
+    new_path = target_path.replace(".xlsx", f"{today}.xlsx")
     target_wb.save(new_path)
     return new_path
 
@@ -70,6 +72,8 @@ def main(page: ft.Page):
                 new_file = update_prices(import_file_path, target_file_path)
                 page.snack_bar = ft.SnackBar(ft.Text(f"✅ Файл оновлено: {os.path.basename(new_file)}"))
                 page.snack_bar.open = True
+                makeImportButton.text = "ПРАЙС ОНОВЛЕНО!"
+                makeImportButton.bgcolor = ft.Colors.GREEN
                 page.update()
             except Exception as ex:
                 page.snack_bar = ft.SnackBar(ft.Text(f"❌ Помилка: {ex}"))
