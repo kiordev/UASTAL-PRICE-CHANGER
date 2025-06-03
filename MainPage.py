@@ -1,127 +1,146 @@
 import flet as ft
-import pandas as pd  # Для работы с Excel-файлами
-from io import BytesIO  # Для работы с файлами в памяти
+import openpyxl
+import os
+from design import *
+from flet import FilePicker, FilePickerResultEvent
+
+uastal_orange = "#E67E22"  # Цвет из design.py (можешь подставить свой)
+
+def update_prices(import_path, target_path):
+    import_wb = openpyxl.load_workbook(import_path)
+    target_wb = openpyxl.load_workbook(target_path)
+
+    import_ws = import_wb.active
+    target_ws = target_wb.active
+
+    # Считываем артикулы и цены из шаблона импорта
+    price_dict = {}
+    for row in import_ws.iter_rows(min_row=2, max_col=3, values_only=True):
+        article, retail, special = row
+        if article:
+            price_dict[str(article).strip()] = (retail, special)
+
+    # Обновляем прайс
+    for row in target_ws.iter_rows(min_row=8, min_col=10, max_col=10):  # Колонка J
+        for cell in row:
+            article = str(cell.value).strip() if cell.value else None
+            if article in price_dict:
+                retail_price, special_price = price_dict[article]
+                target_ws[f'H{cell.row}'] = retail_price
+                target_ws[f'I{cell.row}'] = special_price
+
+    # Сохраняем новый файл
+    new_path = target_path.replace(".xlsx", "_UPDATED.xlsx")
+    target_wb.save(new_path)
+    return new_path
+
 
 def main(page: ft.Page):
-    # Настройки страницы
-    page.title = "UASTAL змінювач цін"
-    page.bgcolor = "#FFFFFF"
-    page.window_height = 650
-    page.window_width = 850
-    page.window_resizable = False
-    page.window_maximizable = False
+    page.title = "UASTAL PRICE CHANGER"
+    page.window.height = 200
+    page.window.width = 500
+    page.window.resizable = False
+    page.window.maximizable = False
     page.padding = 0
+    page.vertical_alignment = ft.MainAxisAlignment.CENTER
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    # Переменная для хранения данных из Excel
-    excel_data = {"Артикул": [], "Розничная цена": [], "Дилерская цена": []}
+    import_file_path = None
+    target_file_path = None
 
-    # Функция для обработки загруженного файла
-    def on_file_upload(result: ft.FilePickerResultEvent):
-        if result.files:
-            try:
-                # Чтение файла через путь
-                file_path = result.files[0].path
-
-                # Загружаем нужные столбцы: A, F, G (с индексами 0, 5, 6)
-                df = pd.read_excel(file_path, engine='xlrd', usecols=[0, 5, 6])
-
-                # Переименовываем столбцы для удобства
-                df.columns = ["Артикул", "Розничная цена", "Дилерская цена"]
-
-                # Заполняем словарь данными из Excel
-                excel_data["Артикул"] = df["Артикул"].tolist()
-                excel_data["Розничная цена"] = df["Розничная цена"].tolist()
-                excel_data["Дилерская цена"] = df["Дилерская цена"].tolist()
-
-                # Обновляем кнопку после успешной загрузки
-                ValikUpload.text = "Завантажено!"
-                ValikUpload.bgcolor = ft.colors.GREEN
-            except Exception as e:
-                ValikUpload.text = "Помилка завантаження!"
-                ValikUpload.bgcolor = ft.colors.RED
-                print(f"Ошибка: {e}")
-            
+    def pick_import_file_result(e: FilePickerResultEvent):
+        nonlocal import_file_path
+        if e.files:
+            import_file_path = e.files[0].path
+            importButton.text = "ТАБЛИЦЯ +"
+            importButton.bgcolor = ft.Colors.GREEN
             page.update()
 
-    # Инициализируем FilePicker
-    file_picker = ft.FilePicker(on_result=on_file_upload)
-    page.overlay.append(file_picker)
+    def pick_target_file_result(e: FilePickerResultEvent):
+        nonlocal target_file_path
+        if e.files:
+            target_file_path = e.files[0].path
+            targetButton.text = "ПРАЙС +"
+            targetButton.bgcolor = ft.Colors.GREEN
+            page.update()
 
-    # Функция для создания таблицы в контейнере
-    def create_table():
-        rows = []
-        for i in range(len(excel_data["Артикул"])):
-            row = ft.DataRow(
-                cells=[
-                    ft.DataCell(ft.Text(excel_data["Артикул"][i])),
-                    ft.DataCell(ft.Text(str(excel_data["Розничная цена"][i]))),
-                    ft.DataCell(ft.Text(str(excel_data["Дилерская цена"][i]))),
-                ]
-            )
-            rows.append(row)
+    def do_import(e):
+        if import_file_path and target_file_path:
+            try:
+                new_file = update_prices(import_file_path, target_file_path)
+                page.snack_bar = ft.SnackBar(ft.Text(f"✅ Файл оновлено: {os.path.basename(new_file)}"))
+                page.snack_bar.open = True
+                page.update()
+            except Exception as ex:
+                page.snack_bar = ft.SnackBar(ft.Text(f"❌ Помилка: {ex}"))
+                page.snack_bar.open = True
+                page.update()
+        else:
+            page.snack_bar = ft.SnackBar(ft.Text("⚠️ Оберіть обидва файли!"))
+            page.snack_bar.open = True
+            page.update()
 
-        # Создаем DataTable и обновляем содержимое TableFrame
-        table = ft.DataTable(
-            columns=[
-                ft.DataColumn(ft.Text("Артикул")),
-                ft.DataColumn(ft.Text("Розничная цена")),
-                ft.DataColumn(ft.Text("Дилерская цена")),
-            ],
-            rows=rows,
-        )
-        TableFrame.content = table
-        page.update()
-
-    # Кнопки
-    ValikUpload = ft.ElevatedButton(
-        "Завантажити таблицю Валентина",
-        bgcolor=ft.colors.WHITE,
-        color=ft.colors.ORANGE,
-        height=50,
-        on_click=lambda _: file_picker.pick_files(
-            allowed_extensions=["xls"], allow_multiple=False  # Разрешаем только .xls файлы
-        ),
+    # Виджеты
+    mainText = ft.Text(
+        "UASTAL PRICE IMPORT",
+        weight=ft.FontWeight.W_700,
+        size=30,
+        color=uastal_orange,
     )
 
-    adaptButton = ft.ElevatedButton(
-        "Адаптувати",
-        bgcolor=ft.colors.WHITE,
-        color=ft.colors.ORANGE,
-        height=50,
-        on_click=lambda _: create_table(),
+    importButton = ft.FilledButton(
+        "ТАБЛИЦЯ ІМПОРТУ",
+        color=ft.colors.WHITE,
+        bgcolor=uastal_orange,
+        width=180,
+        height=40,
     )
 
-    importButton = ft.ElevatedButton("Створити файл імпорту", bgcolor=ft.colors.WHITE, color=ft.colors.ORANGE)
-    priceButton = ft.ElevatedButton("Оновити прайс", bgcolor=ft.colors.WHITE, color=ft.colors.ORANGE)
-    uploadButton = ft.ElevatedButton("Завантажити прайс", bgcolor=ft.colors.WHITE, color=ft.colors.ORANGE)
-
-    # Контейнер для таблицы
-    TableFrame = ft.Container(
-        bgcolor=ft.colors.GREY,
-        width=750,
-        height=400,
-        content=None,  # Таблица появится после нажатия adaptButton
+    targetButton = ft.FilledButton(
+        "СТАРИЙ ПРАЙС",
+        color=ft.colors.WHITE,
+        bgcolor=uastal_orange,
+        width=180,
+        height=40,
     )
 
-    # Размещение элементов
-    TextFieldsRow = ft.Row([ValikUpload, adaptButton], alignment=ft.MainAxisAlignment.CENTER)
-    uploadRow = ft.Column([uploadButton])
-    importPriceButtonRow = ft.Row(
-        [importButton, uploadRow, priceButton],
-        spacing=15,
-        alignment=ft.MainAxisAlignment.CENTER,
-    )
-    mainColumn = ft.Column(
-        [TextFieldsRow, TableFrame, importPriceButtonRow],
-        alignment=ft.MainAxisAlignment.CENTER,
-        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+    makeImportButton = ft.FilledButton(
+        "ОНОВИТИ ЦІНИ",
+        color=ft.colors.WHITE,
+        bgcolor=uastal_orange,
+        width=180,
+        height=40,
     )
 
-    # Основной контейнер
-    mainFrame = ft.Container(content=mainColumn, padding=10)
+    # File pickers
+    import_picker = FilePicker(on_result=pick_import_file_result)
+    target_picker = FilePicker(on_result=pick_target_file_result)
+    page.overlay.extend([import_picker, target_picker])
 
-    # Добавляем основной контейнер на страницу
-    page.add(mainFrame)
+    importButton.on_click = lambda e: import_picker.pick_files(allow_multiple=False)
+    targetButton.on_click = lambda e: target_picker.pick_files(allow_multiple=False)
+    makeImportButton.on_click = do_import
 
-# Запуск приложения
+    # Разметка
+    buttonRow = ft.Row([
+        importButton, 
+        targetButton],
+        alignment=ft.MainAxisAlignment.SPACE_AROUND)
+    
+    mainColumn = ft.Column([
+        mainText, 
+        buttonRow, 
+        makeImportButton],
+        alignment=ft.MainAxisAlignment.START,
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+
+    mainContainer = ft.Container(
+        content=mainColumn,
+        gradient=ft.LinearGradient(begin=ft.alignment.bottom_right, end=ft.alignment.top_left, colors=[ft.Colors.DEEP_ORANGE_50, ft.Colors.ORANGE_50]),
+        height=600,
+        width=1000,
+    )
+
+    page.add(mainContainer)
+
 ft.app(target=main)
